@@ -1,8 +1,6 @@
 name: Release installer
 on: 
   push:
-    branches:
-      - master
     tags:
       - v.*
 
@@ -26,9 +24,18 @@ jobs:
         run: poetry self add poetry-pyinstaller-plugin
       - name: Build artifacts
         run: poetry build
-      - name: Upload artifacts
-        uses: actions/upload-artifact@v4
+      - name: Do release
+        uses: actions/create-release@v1
+        id: create-release
         with:
-          name: ras-spt-mod-installer_${{github.ref_name}}
-          path: dist/*
-          if-no-files-found: error
+          draft: false
+          prerelease: false
+          release_name: ${{ steps.version.outputs.version }}
+          tag_name: ${{ github.ref }}
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+      - name: upload windows artifact
+        uses: softprops/action-gh-release@v2
+        with:
+          files:
+            dist/*
