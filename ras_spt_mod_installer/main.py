@@ -67,9 +67,14 @@ def extract():
         file.write(json.dumps(progress))
 
 
-if os.path.exists(progress_file):
-    with open(progress_file) as file:
-        progress = json.load(file)
+def main():
+    if os.path.exists(progress_file):
+        with open(progress_file) as file:
+            progress = json.load(file)
 
-download()
-extract()
+    download()
+    extract()
+
+
+if __name__ == '__main__':
+    main()

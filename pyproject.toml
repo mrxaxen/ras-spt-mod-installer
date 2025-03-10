@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "ras-spt-mod-installer"
+name = "ras_spt_mod_installer"
 version = "0.1.0"
 description = ""
 authors = ["Eszter, Gábor <mrxaxen@gmail.com>"]
@@ -18,4 +18,7 @@ requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.poetry-pyinstaller-plugin.scripts]
-ras-spt-mod-installer = { source = "main.py", type = "onefile", bundle = false }
+ras-spt-mod-installer = { source = "ras_spt_mod_installer/main.py", type = "onefile", bundle = false }
+
+[tool.poetry.scripts]
+ras-spt-mod-installer='ras_spt_mod_installer.main:main'
