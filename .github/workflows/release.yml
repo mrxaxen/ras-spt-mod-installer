@@ -24,18 +24,9 @@ jobs:
         run: poetry self add poetry-pyinstaller-plugin
       - name: Build artifacts
         run: poetry build
-      - name: Do release
-        uses: actions/create-release@v1
-        id: create-release
-        with:
-          draft: false
-          prerelease: false
-          release_name: ${{ steps.version.outputs.version }}
-          tag_name: ${{ github.ref }}
-        env:
-          GITHUB_TOKEN: ${{ github.token }}
       - name: upload windows artifact
         uses: softprops/action-gh-release@v2
         with:
+          token: ${{ secrets.SPT_RELEASE_TOKEN }}
           files:
-            dist/*
+            dist/pyinstaller/win_amd64/*
