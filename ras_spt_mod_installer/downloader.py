@@ -44,7 +44,7 @@ class RASDownloader:
         requested_mods: dict
 
         if not os.path.exists(self.download_folder):
-            os.mkdir(self.download_folder)
+            os.makedirs(self.download_folder)
 
         if os.path.exists(self.mod_install_progress_file):
             with open(self.mod_install_progress_file, 'rb') as file:
@@ -99,7 +99,7 @@ class RASDownloader:
         self.__write_progress()
 
     def extract(self):
-        print('Extracting mods..')
+        print('\nExtracting mods..')
         for name, mod_entry in self.mod_install_progress.items():
             extract_condition = any([
                 mod_entry.status == RASDownloadStatus.EXTRACT_FAILED,
@@ -125,19 +125,43 @@ class RASDownloader:
 
     # TODO: Finish
     def remove(self):
+        print('Removing mods..')
         for mod_name in self.mods_to_remove:
+            print(f'Removing {mod_name}')
             mod_entry = self.mod_install_progress[mod_name]
 
             try:
+                mod_directory_path = None
                 member_files = mod_entry.member_files.copy()
                 member_files.reverse()
                 for path in member_files:
                     if path not in self.__taboo_paths:
+                        print(f'Removing: {path}')
                         if os.path.exists(path):
                             if os.path.isdir(path):
                                 os.rmdir(path)
 
                             if os.path.isfile(path):
                                 os.remove(path)
+
+                    if 'user/mods/' in path:
+                        mod_directory_name = path.split('user/mods/')[1].split('/')[0]
+                        mod_directory_path = f'user/mods/{mod_directory_name}'
+
+                if mod_directory_path is not None and os.path.exists(mod_directory_path):
+                    print(f'Removing: {mod_directory_path}')
+                    os.rmdir(mod_directory_path)
+
+                if os.path.exists(mod_entry.file_path):
+                    print(f'Removing: {mod_entry.file_path}')
+                    os.remove(mod_entry.file_path)
+
+                self.mod_install_progress.pop(mod_name)
+                print(f'Successfully removed {mod_name}')
             except Exception:
-                pass
+                traceback.print_exc()
+
+    def run(self):
+        self.remove()
+        self.download()
+        self.extract()
