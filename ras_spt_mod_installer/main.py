@@ -69,15 +69,15 @@ class RASLauncher:
             origin.fetch()
             self.git_repo.create_head("master", origin.refs.master)
             self.git_repo.heads.master.set_tracking_branch(origin.refs.master)
-            self.git_repo.head.reset(commit='FETCH_HEAD', index=True, working_tree=True)
         else:
             self.git_repo = git.Repo()
 
-    def pull_config_changes(self):
+    def apply_config_changes(self):
         self.check_git_availability()
         self.check_if_repo_exists()
 
-        self.git_repo.remote().pull()
+        self.git_repo.remote().fetch()
+        self.git_repo.head.reset('FETCH_HEAD', index=True, working_tree=True)
 
     def launch_spt(self):
         print('Launching SPT.. Have fun!')
@@ -85,8 +85,8 @@ class RASLauncher:
         process = subprocess.Popen(cmd, start_new_session=True)
 
     def run(self):
-        self.pull_config_changes()
         self.downloader.run()
+        self.apply_config_changes()
         self.launch_spt()
 
 
