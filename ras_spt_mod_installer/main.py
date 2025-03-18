@@ -86,7 +86,8 @@ class RASLauncher:
                 launcher_path = file
 
         if launcher_path:
-            cmd = f'start {launcher_path}'.split()
+            path = os.path.join(os.getcwd(), launcher_path)
+            cmd = f'start {path}'.split()
             print(cmd)
             process = subprocess.Popen(cmd, start_new_session=True)
         else:
