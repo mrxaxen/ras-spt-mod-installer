@@ -95,7 +95,7 @@ class RASDownloader:
                     traceback.print_exc()
 
                 mod_entry.status = download_status
-                mod_entry.file_path = file_path
+                mod_entry.file_path = os.path.normpath(file_path)
 
         self.__write_progress()
 
