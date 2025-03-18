@@ -9,9 +9,6 @@ from shutil import which
 from downloader import RASDownloader
 
 
-# TODO: git pull
-# TODO: launch downloader
-# TODO: launch SPT launcher
 class RASLauncher:
 
     def __init__(self) -> None:
@@ -59,7 +56,9 @@ class RASLauncher:
 
     def check_if_repo_exists(self):
         print('Setting up git repository..')
-        if not git.Repo.active_branch == 'master':
+        self.git_repo = git.Repo()
+
+        if not self.git_repo.remote().exists():
             self.git_repo = git.Repo.init()
             origin = git.Remote.add(
                 repo=self.git_repo,
@@ -69,8 +68,6 @@ class RASLauncher:
             origin.fetch()
             self.git_repo.create_head("master", origin.refs.master)
             self.git_repo.heads.master.set_tracking_branch(origin.refs.master)
-        else:
-            self.git_repo = git.Repo()
 
     def apply_config_changes(self):
         self.check_git_availability()
@@ -78,6 +75,7 @@ class RASLauncher:
 
         self.git_repo.remote().fetch()
         self.git_repo.head.reset('FETCH_HEAD', index=True, working_tree=True)
+        self.git.execute('git restore .')  # TODO: Test this
 
     def launch_spt(self):
         print('Launching SPT.. Have fun!')
@@ -90,7 +88,14 @@ class RASLauncher:
         self.launch_spt()
 
 
+def exception_hook(type, value, traceback, oldhook=sys.excepthook):
+    oldhook(type, value, traceback)
+    print('Please make a screenshot of the error and send it to me! Github: @mrxaxen')
+    input('Press RETURN to exit...')
+
+
 def main():
+    sys.excepthook = exception_hook
     launcher = RASLauncher()
     launcher.run()
 
