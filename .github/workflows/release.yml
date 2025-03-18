@@ -30,4 +30,3 @@ jobs:
           token: ${{ secrets.SPT_RELEASE_TOKEN }}
           files: |
             dist/pyinstaller/win_amd64/*
-            ras_spt_mod_installer/mods.json
