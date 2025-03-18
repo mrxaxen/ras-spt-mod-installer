@@ -86,7 +86,7 @@ class RASDownloader:
                     print(f"\nDownloading: {mod_entry.url.split('/')[-1]}")
                     if "drive.google.com" in mod_entry.url:
                         file_path = gdown.download(
-                            url=mod_entry.url, output=self.download_folder, fuzzy=True)
+                            url=mod_entry.url, output=f'{self.download_folder}/{name}', fuzzy=True)
                     else:
                         file_path = wget.download(url=mod_entry.url, out=self.download_folder)
                     download_status = RASDownloadStatus.DOWNLOAD_SUCCESS

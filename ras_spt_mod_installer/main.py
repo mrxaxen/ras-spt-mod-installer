@@ -79,8 +79,18 @@ class RASLauncher:
 
     def launch_spt(self):
         print('Launching SPT.. Have fun!')
-        cmd = 'start SPT.Launcher.exe'.split()
-        process = subprocess.Popen(cmd, start_new_session=True)
+        files = os.listdir()
+        launcher_path = ''
+        for file in files:
+            if 'SPT' in file and 'Launcher' in file:
+                launcher_path = file
+
+        if launcher_path:
+            cmd = f'start {launcher_path}'.split()
+            print(cmd)
+            process = subprocess.Popen(cmd, start_new_session=True)
+        else:
+            print('SPT Launcher not found! Please make sure you are running the RAS Launcher from the same directory!')
 
     def run(self):
         self.downloader.run()
