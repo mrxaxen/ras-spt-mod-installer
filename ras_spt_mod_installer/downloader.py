@@ -1,17 +1,13 @@
-from ast import mod
-from io import UnsupportedOperation
 import json
 import os
-from typing import Dict
-import gdown
 import traceback
 import wget
 import zipfile
 import py7zr
 
+from io import UnsupportedOperation
 from enum import Enum
-from pathlib import Path
-from collections import defaultdict
+from typing import Dict
 from pydantic import BaseModel, TypeAdapter
 
 
@@ -85,11 +81,7 @@ class RASDownloader:
             if download_condition:
                 try:
                     print(f"\nDownloading: {mod_entry.url.split('/')[-1]}")
-                    if "drive.google.com" in mod_entry.url:
-                        id = mod_entry.url.split('/')[-1]
-                        file_path = gdown.download(id=id, output=self.download_folder)
-                    else:
-                        file_path = wget.download(url=mod_entry.url, out=self.download_folder)
+                    file_path = wget.download(url=mod_entry.url, out=self.download_folder)
                     download_status = RASDownloadStatus.DOWNLOAD_SUCCESS
                 except Exception:
                     traceback.print_exc()
