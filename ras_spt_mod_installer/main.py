@@ -2,6 +2,7 @@ import traceback
 import git
 import os
 import sys
+from git.exc import InvalidGitRepositoryError
 import wget
 import subprocess
 
@@ -56,9 +57,12 @@ class RASLauncher:
 
     def check_if_repo_exists(self):
         print('Setting up git repository..')
-        self.git_repo = git.Repo()
+        try:
+            self.git_repo = git.Repo()
+        except InvalidGitRepositoryError:
+            self.git_repo = None
 
-        if not self.git_repo.remote().exists():
+        if not self.git_repo:
             self.git_repo = git.Repo.init()
             origin = git.Remote.add(
                 repo=self.git_repo,
@@ -75,7 +79,7 @@ class RASLauncher:
 
         self.git_repo.remote().fetch()
         self.git_repo.head.reset('FETCH_HEAD', index=True, working_tree=True)
-        self.git.execute('git restore .')  # TODO: Test this
+        self.git.execute('git restore .'.split())  # TODO: Test this
 
     def launch_spt(self):
         print('Launching SPT.. Have fun!')
