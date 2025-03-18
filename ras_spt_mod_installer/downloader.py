@@ -1,3 +1,4 @@
+from http.client import OK
 import json
 import os
 import traceback
@@ -157,7 +158,15 @@ class RASDownloader:
             except Exception:
                 traceback.print_exc()
 
+    def print_status(self):
+        print('\n')
+        for mod_name, mod_entry in self.mod_install_progress.items():
+            print(f'{mod_name}: Progress: {mod_entry.status.value}')
+
+        print('\n')
+
     def run(self):
         self.remove()
         self.download()
         self.extract()
+        self.print_status()

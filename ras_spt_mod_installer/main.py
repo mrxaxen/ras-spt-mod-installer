@@ -82,7 +82,6 @@ class RASLauncher:
         self.git.execute('git restore .'.split())  # TODO: Test this
 
     def launch_spt(self):
-        print('Launching SPT.. Have fun!')
         files = os.listdir()
         launcher_path = ''
         for file in files:
@@ -94,6 +93,7 @@ class RASLauncher:
             cmd = f'cmd /c start {path}'.split()
             print(cmd)
             process = subprocess.Popen(cmd, start_new_session=True)
+            print('Launching SPT.. Have fun!')
         else:
             print('SPT Launcher not found! Please make sure you are running the RAS Launcher from the same directory!')
 
@@ -113,6 +113,7 @@ def main():
     sys.excepthook = exception_hook
     launcher = RASLauncher()
     launcher.run()
+    input('Press RETURN to exit...')
 
 
 if __name__ == '__main__':
