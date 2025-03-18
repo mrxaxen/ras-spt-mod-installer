@@ -19,7 +19,7 @@ requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.poetry-pyinstaller-plugin.scripts]
-RAS.SPT.Launcher = { source = "ras_spt_mod_installer/main.py", type = "onefile", bundle = false }
+RAS-SPT-Mod-Launcher = { source = "ras_spt_mod_installer/main.py", type = "onefile", bundle = false }
 
 [tool.poetry.scripts]
-ras-spt-mod-installer='ras_spt_mod_installer.main:main'
+ras-spt-mod-launcher = 'ras_spt_mod_installer.main:main'
