@@ -1,4 +1,5 @@
 from ast import mod
+from io import UnsupportedOperation
 import json
 import os
 from typing import Dict
@@ -107,14 +108,17 @@ class RASDownloader:
             ])
             if extract_condition:
                 try:
-                    if ".zip" in mod_entry.file_path:
+                    if zipfile.is_zipfile(mod_entry.file_path):
                         with zipfile.ZipFile(file=mod_entry.file_path, mode='r') as file:
                             mod_entry.member_files = file.namelist()
                             file.extractall(".")
-                    else:
+
+                    elif py7zr.is_7zfile(mod_entry.file_path):
                         with py7zr.SevenZipFile(file=mod_entry.file_path, mode='r') as file:
                             mod_entry.member_files = file.namelist()
                             file.extractall(".")
+                    else:
+                        raise UnsupportedOperation('File format is not supported!')
 
                     mod_entry.status = RASDownloadStatus.EXTRACT_SUCCESS
                 except Exception:
