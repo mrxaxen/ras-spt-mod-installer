@@ -43,6 +43,7 @@ class RASDownloader:
         self.download_folder = download_folder
         self.mod_install_progress_file = progress_file
         self.mods_to_remove: list[str]
+        self.__mods_file = mods_file
         self.__adapter = TypeAdapter(Dict[str, ModEntry])
         self.__taboo_paths = ['BepInEx/plugins/', 'user/mods/']
         self.__chunck_size = multipart_chunck_size
@@ -50,7 +51,6 @@ class RASDownloader:
         requested_mods: dict
 
         self.__logger = logging.getLogger(RASDownloader.__name__)
-        self.__logger.setLevel(logging.INFO)
 
         if not os.path.exists(self.download_folder):
             os.makedirs(self.download_folder)
@@ -60,8 +60,9 @@ class RASDownloader:
                 file_content = file.read()
                 self.mod_install_progress = self.__adapter.validate_json(file_content)
 
-        if os.path.exists(mods_file):
-            with open(mods_file, 'r') as file:
+    def __check_mods_file_exists(self):
+        if os.path.exists(self.__mods_file):
+            with open(self.__mods_file, 'r') as file:
                 requested_mods = json.load(file)
 
             self.mods_to_remove = [k for k, _ in self.mod_install_progress.items()]
@@ -72,7 +73,7 @@ class RASDownloader:
                     self.mod_install_progress[mod_name] = ModEntry(url=url)
         else:
             raise FileNotFoundError(
-                f'Mod enumeration file: {mods_file} not found! Please create a list of mods that you want to use!')
+                f'Mod enumeration file: {self.__mods_file} not found! Please create a list of mods that you want to use!')
 
     def __write_progress(self):
         with open(self.mod_install_progress_file, 'wb') as file:
@@ -268,6 +269,7 @@ class RASDownloader:
         print('\n')
 
     def run(self):
+        self.__check_mods_file_exists()
         self.remove()
         self.download()
         self.extract()

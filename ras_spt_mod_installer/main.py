@@ -2,9 +2,11 @@ import traceback
 import git
 import os
 import sys
+import httpx
 import wget
 import subprocess
 import logging
+import zipfile
 
 from git.exc import InvalidGitRepositoryError
 from shutil import which
@@ -25,7 +27,8 @@ class RASLauncher:
             num_of_connections=5
         )
         self.git_folder = 'ras_resources/git/'
-        self.git_url = 'https://github.com/git-for-windows/git/releases/download/v2.48.1.windows.1/Git-2.48.1-64-bit.exe'
+        self.git_url = 'https://github.com/git-for-windows/git/releases/download/v2.49.0.windows.1/MinGit-2.49.0-64-bit.zip'
+        self.ras_mods_file_url = 'https://raw.githubusercontent.com/mrxaxen/spt-coop-config-3.10/refs/heads/master/ras_mods.json'
         self.git_repo: git.Repo
 
         self.__logger = logging.getLogger(RASLauncher.__name__)
@@ -39,17 +42,20 @@ class RASLauncher:
 
             git_installer_path = None
             try:
-                git_installer_path = wget.download(
-                    self.git_url, out=f'{self.git_folder}/git_installer.exe')
+                git_installer_path = wget.download(self.git_url, out=f'{self.git_folder}')
 
-                install_cmd = f'start {git_installer_path}'.split()
-                process = subprocess.run(install_cmd, check=True)
+                if zipfile.is_zipfile(git_installer_path):
+                    with zipfile.ZipFile(file=git_installer_path, mode='r') as file:
+                        file.extractall(self.git_folder)
+
+                os.environ['PATH'] += os.pathsep + os.path.join(self.git_folder, 'cmd')
+
                 self.git = git.Git()
                 version = [str(v) for v in self.git.version_info]
                 self.__logger.info(f'Installed git version: {".".join(version)}')
             except subprocess.CalledProcessError:
                 self.__logger.error(
-                    f'Git installation failed. The installer is located at: {git_installer_path}, please attempt it manually.')
+                    f'Git install failed. The portable version is located at: {git_installer_path}, please attempt to add its cmd folder to PATH manually.')
                 traceback.print_exc()
                 sys.exit(1)
             except Exception:
@@ -79,8 +85,6 @@ class RASLauncher:
             self.git_repo.heads.master.set_tracking_branch(origin.refs.master)
 
     def apply_config_changes(self):
-        self.check_git_availability()
-        self.check_if_repo_exists()
 
         self.git_repo.remote().fetch()
         self.git_repo.head.reset('FETCH_HEAD', index=True, working_tree=True)
@@ -102,8 +106,19 @@ class RASLauncher:
             self.__logger.warning(
                 'SPT Launcher not found! Please make sure you are running the RAS Launcher from the same directory!')
 
+    def get_mods_file(self):
+        client = httpx.Client()
+        response = client.request(method='GET', url=self.ras_mods_file_url)
+        response.raise_for_status()
+
+        with open('ras_mods.json', 'wb') as file:
+            file.write(response.content)
+
     def run(self):
-        self.downloader.run()
+        self.check_git_availability()
+        self.check_if_repo_exists()
+        self.get_mods_file()
+        # self.downloader.run()
         self.apply_config_changes()
         self.launch_spt()
 
@@ -123,6 +138,8 @@ def main():
     formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
     log_handler = logging.FileHandler('./ras_logging')
     logging.getLogger().addHandler(log_handler)
+
+    logging.getLogger().setLevel(logging.INFO)
 
     sys.excepthook = exception_hook
     launcher = RASLauncher()
