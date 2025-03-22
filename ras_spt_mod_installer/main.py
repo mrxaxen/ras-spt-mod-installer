@@ -118,7 +118,7 @@ class RASLauncher:
         self.check_git_availability()
         self.check_if_repo_exists()
         self.get_mods_file()
-        # self.downloader.run()
+        self.downloader.run()
         self.apply_config_changes()
         self.launch_spt()
 
