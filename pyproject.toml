@@ -13,6 +13,8 @@ py7zr = "^0.22.0"
 pydantic = "^2.10.6"
 
 gitpython = "^3.1.44"
+httpx = "^0.28.1"
+alive-progress = "^3.2.0"
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"

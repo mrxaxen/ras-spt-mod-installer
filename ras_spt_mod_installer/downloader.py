@@ -1,15 +1,20 @@
+import asyncio
 from http.client import OK
 import json
+import math
 import os
 import traceback
 import wget
 import zipfile
 import py7zr
+import httpx
 
+from alive_progress import alive_bar
 from io import UnsupportedOperation
 from enum import Enum
-from typing import Dict
+from typing import Dict, Tuple
 from pydantic import BaseModel, TypeAdapter
+from httpx import Response
 
 
 # NEW -> DOWNLOAD_FAILED/SUCCESS -> EXTRACT_FAILED/SUCCESS Can be REMOVED at any point
@@ -32,13 +37,15 @@ class ModEntry(BaseModel):
 
 class RASDownloader:
 
-    def __init__(self, download_folder: str, mods_file: str, progress_file: str) -> None:
+    def __init__(self, download_folder: str, mods_file: str, progress_file: str, multipart_chunck_size: int, num_of_connections: int) -> None:
         self.mod_install_progress: Dict[str, ModEntry] = dict()
         self.download_folder = download_folder
         self.mod_install_progress_file = progress_file
         self.mods_to_remove: list[str]
         self.__adapter = TypeAdapter(Dict[str, ModEntry])
         self.__taboo_paths = ['BepInEx/plugins/', 'user/mods/']
+        self.__chunck_size = multipart_chunck_size
+        self.__num_of_connections = num_of_connections
         requested_mods: dict
 
         if not os.path.exists(self.download_folder):
@@ -68,29 +75,110 @@ class RASDownloader:
             content = self.__adapter.dump_json(self.mod_install_progress)
             file.write(content)
 
-    # TODO: Swap out WGET, to a faster solution
     def download(self):
-        print('Downloading mods..')
+        client = httpx.Client()
         for name, mod_entry in self.mod_install_progress.items():
-            file_path = ''
-            download_status = RASDownloadStatus.DOWNLOAD_FAILED
-            download_condition = any([
-                mod_entry.status == RASDownloadStatus.DOWNLOAD_FAILED,
-                mod_entry.status == RASDownloadStatus.NEW,
-            ])
+            response = client.request(method='HEAD', url=mod_entry.url)
+            if 'location' in response.headers:
+                mod_entry.url = response.headers['location']
+                response = client.request(method='HEAD', url=mod_entry.url)
 
-            if download_condition:
-                try:
-                    print(f"\nDownloading: {mod_entry.url.split('/')[-1]}")
-                    file_path = wget.download(url=mod_entry.url, out=self.download_folder)
-                    download_status = RASDownloadStatus.DOWNLOAD_SUCCESS
-                except Exception:
-                    traceback.print_exc()
+            response.raise_for_status()
+            mod_name = response.headers['content-disposition'].split('filename=')[1].split('.')[0]
 
-                mod_entry.status = download_status
-                mod_entry.file_path = os.path.normpath(file_path)
+            try:
+                file_path: str
+                download_condition = any([
+                    mod_entry.status == RASDownloadStatus.DOWNLOAD_FAILED,
+                    mod_entry.status == RASDownloadStatus.NEW, ])
 
-        self.__write_progress()
+                if download_condition:
+                    print(f"\nDownloading: {mod_name}")
+                    if 'accept-ranges' in response.headers and int(response.headers['content-length']) > self.__chunck_size:
+                        file_path = self.__download_multi_thread(name, mod_entry, response)
+                    else:
+                        file_path = self.__download_single_thread(name, mod_entry)
+                    mod_entry.file_path = file_path
+                    mod_entry.status = RASDownloadStatus.DOWNLOAD_SUCCESS
+            except Exception:
+                mod_entry.status = RASDownloadStatus.DOWNLOAD_FAILED
+                traceback.print_exc()
+
+    def __download_multi_thread(self, name: str, mod_entry: ModEntry, response: Response) -> str:
+        content_length = int(response.headers['content-length'])
+
+        # Range selection
+        start = 0
+        ranges = []
+        for i in range(content_length // self.__chunck_size):
+            ranges.append((start + i * self.__chunck_size,
+                          self.__chunck_size + i * self.__chunck_size - 1))
+
+        if ranges[-1][1] < content_length:
+            # That +1 took me 1,5 hours to figure out..
+            ranges.append((ranges[-1][1]+1, content_length))
+
+        async def download_chunk(url: str, rng: Tuple[int, int], idx: int):
+            try:
+                client = httpx.AsyncClient()
+                headers = {
+                    'range': f'bytes={rng[0]}-{rng[1]}'
+                }
+                response = await client.request(method='GET', url=url, headers=headers)
+                response.raise_for_status()
+                return idx, response.content
+            except Exception as e:
+                return idx, e
+
+        jobs = [
+            download_chunk(url=mod_entry.url, rng=rng, idx=idx) for idx, rng in enumerate(ranges)
+        ]
+        chunk_progress = [b'-1' for e in jobs]
+
+        tries = 0
+        max_tries = int(content_length // self.__chunck_size * 1.5)
+        with alive_bar(math.ceil(content_length // self.__chunck_size / self.__num_of_connections)) as bar:
+            while len(jobs) > 0 and tries < max_tries:
+                current_jobs = []
+                for i in range(self.__num_of_connections):
+                    try:
+                        current_jobs.append(jobs.pop())
+                    except IndexError:
+                        break
+
+                async def download_routine():
+                    return await asyncio.gather(*current_jobs, return_exceptions=False)
+                results = asyncio.run(download_routine(), debug=True)
+
+                tries += 1
+                for idx, result in results:
+                    if isinstance(result, Exception):
+                        jobs.append(download_chunk(url=mod_entry.url, rng=ranges[idx], idx=idx))
+                        if tries > max_tries:
+                            raise Exception(
+                                f'Multipart download failed for entry. Too many retries. Err: {result}')
+                    else:
+                        chunk_progress[idx] = result
+
+                bar()
+
+        filename = response.headers['content-disposition'].split('filename=')[1]
+        file_path = os.path.join(self.download_folder, filename)
+        assert b'-1' not in chunk_progress
+
+        with open(file=file_path, mode='wb') as file:
+            bytes_written = 0
+            for entry in chunk_progress:
+                bytes_written += file.write(entry)
+
+            print(f'Written: {bytes_written}, content length: {content_length}')
+            assert bytes_written == content_length
+
+        return os.path.normpath(file_path)
+
+    def __download_single_thread(self, name: str, mod_entry: ModEntry) -> str:
+        file_path = wget.download(url=mod_entry.url, out=self.download_folder)
+        return os.path.normpath(file_path)
 
     def extract(self):
         print('\nExtracting mods..')
@@ -120,7 +208,6 @@ class RASDownloader:
 
         self.__write_progress()
 
-    # TODO: Finish
     def remove(self):
         print('Removing mods..')
         for mod_name in self.mods_to_remove:

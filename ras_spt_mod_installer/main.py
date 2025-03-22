@@ -20,6 +20,8 @@ class RASLauncher:
             download_folder=download_folder,
             mods_file=mods_file,
             progress_file=progress_file,
+            multipart_chunck_size=50000000,
+            num_of_connections=5
         )
         self.git_folder = 'ras_resources/git/'
         self.git_url = 'https://github.com/git-for-windows/git/releases/download/v2.48.1.windows.1/Git-2.48.1-64-bit.exe'

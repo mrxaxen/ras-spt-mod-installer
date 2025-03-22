@@ -26,8 +26,11 @@
     "wtt_armory_wages":"https://github.com/WelcomeToTarkov/WTT-Armory-WagesOfSin/releases/download/Release/WTTArmoryWagesOfSin.zip",
     "wtt_armory_m249":"https://github.com/WelcomeToTarkov/WTT-Armory-M249/releases/download/1.0.3/WTT-Armory-M249-1.0.3.zip",
     "wtt_armory_ak5c":"https://github.com/WelcomeToTarkov/WTT-Armory-Ak5C/releases/download/1.03/WTT-Armory-Ak5C-1.0.3.zip",
+	"wtt_armory_cheytec" : "https://github.com/WelcomeToTarkov/WTT-Armory-Cheytac/releases/download/Release/WTT-Armory-Cheytac-1.0.1.zip",
+	"wtt_armory_realism_patch" : "https://github.com/Therkelsen/wtt-realism-compatibility/releases/download/v1.1.1_SPT-v3.10.X/wtt-realism-compatibility_1.1.1_SPT-v3.10.X.zip",
     "saryn_all_tracers":"https://github.com/Sarynas/AllTracers/releases/download/release/saryn-alltracers.zip",
     "auto_deposit":"https://github.com/tyfon7/AutoDeposit/releases/download/v3.0.1/Tyfon-AutoDeposit-3.0.1.zip",
-    "fontaine_fov_fix": "https://github.com/space-commits/SPT-FOV-Fix/releases/download/v3.0.3/Fontaine-FOV-Fix-v3.0.3-SPT-v3.10.x.zip",
     "trader_scrolling": "https://github.com/CWXDEV/Kaeno-TraderScrolling/releases/download/1.2.0/Kaeno-TraderScrolling.-.1.2.0.zip",
+	"item_sell_price": "https://docs.google.com/uc?export=download&confirm=t&id=10nzNX_SmGm2qy9a3f_zsxNL-KCqN1iMv",
+	"hands_are_not_busy": "https://github.com/Lacyway/HandsAreNotBusy/releases/download/1.4/HandsAreNotBusy.zip"
 }
