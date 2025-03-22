@@ -1,5 +1,4 @@
 import asyncio
-from http.client import OK
 import json
 import math
 import os
@@ -8,6 +7,8 @@ import wget
 import zipfile
 import py7zr
 import httpx
+import logging
+import sys
 
 from alive_progress import alive_bar
 from io import UnsupportedOperation
@@ -47,6 +48,9 @@ class RASDownloader:
         self.__chunck_size = multipart_chunck_size
         self.__num_of_connections = num_of_connections
         requested_mods: dict
+
+        self.__logger = logging.getLogger(RASDownloader.__name__)
+        self.__logger.setLevel(logging.INFO)
 
         if not os.path.exists(self.download_folder):
             os.makedirs(self.download_folder)
@@ -93,7 +97,7 @@ class RASDownloader:
                     mod_entry.status == RASDownloadStatus.NEW, ])
 
                 if download_condition:
-                    print(f"\nDownloading: {mod_name}")
+                    self.__logger.info(f"Downloading: {mod_name}")
                     if 'accept-ranges' in response.headers and int(response.headers['content-length']) > self.__chunck_size:
                         file_path = self.__download_multi_thread(name, mod_entry, response)
                     else:
@@ -102,7 +106,9 @@ class RASDownloader:
                     mod_entry.status = RASDownloadStatus.DOWNLOAD_SUCCESS
             except Exception:
                 mod_entry.status = RASDownloadStatus.DOWNLOAD_FAILED
-                traceback.print_exc()
+                self.__logger.error(traceback.format_exc())
+
+        self.__write_progress()
 
     def __download_multi_thread(self, name: str, mod_entry: ModEntry, response: Response) -> str:
         content_length = int(response.headers['content-length'])
@@ -118,6 +124,8 @@ class RASDownloader:
             # That +1 took me 1,5 hours to figure out..
             ranges.append((ranges[-1][1]+1, content_length))
 
+        self.__logger.debug(f'Frame byte ranges: {ranges}')
+
         async def download_chunk(url: str, rng: Tuple[int, int], idx: int):
             try:
                 client = httpx.AsyncClient()
@@ -128,6 +136,8 @@ class RASDownloader:
                 response.raise_for_status()
                 return idx, response.content
             except Exception as e:
+                self.__logger.debug(
+                    f'Exception occured when downloading frame {idx}: {traceback.format_exc()}')
                 return idx, e
 
         jobs = [
@@ -144,6 +154,7 @@ class RASDownloader:
                     try:
                         current_jobs.append(jobs.pop())
                     except IndexError:
+                        self.__logger.debug('End of jobs array reached.')
                         break
 
                 async def download_routine():
@@ -171,18 +182,20 @@ class RASDownloader:
             for entry in chunk_progress:
                 bytes_written += file.write(entry)
 
-            print(f'Written: {bytes_written}, content length: {content_length}')
+            self.__logger.debug(f'Written: {bytes_written}, content length: {content_length}')
             assert bytes_written == content_length
 
         return os.path.normpath(file_path)
 
     def __download_single_thread(self, name: str, mod_entry: ModEntry) -> str:
         file_path = wget.download(url=mod_entry.url, out=self.download_folder)
+        print('\n')
         return os.path.normpath(file_path)
 
     def extract(self):
-        print('\nExtracting mods..')
+        self.__logger.info('Extracting mods..')
         for name, mod_entry in self.mod_install_progress.items():
+            self.__logger.info(f'Extracting mod: {name}')
             extract_condition = any([
                 mod_entry.status == RASDownloadStatus.EXTRACT_FAILED,
                 mod_entry.status == RASDownloadStatus.DOWNLOAD_SUCCESS,
@@ -203,15 +216,16 @@ class RASDownloader:
 
                     mod_entry.status = RASDownloadStatus.EXTRACT_SUCCESS
                 except Exception:
-                    traceback.print_exc()
+                    self.__logger.error(
+                        f'An error occured while extracting files: {traceback.format_exc()}')
                     mod_entry.status = RASDownloadStatus.EXTRACT_FAILED
 
         self.__write_progress()
 
     def remove(self):
-        print('Removing mods..')
+        self.__logger.info('Removing mods..')
         for mod_name in self.mods_to_remove:
-            print(f'Removing {mod_name}')
+            self.__logger.info(f'Removing {mod_name}')
             mod_entry = self.mod_install_progress[mod_name]
 
             try:
@@ -233,17 +247,18 @@ class RASDownloader:
                         mod_directory_path = f'user/mods/{mod_directory_name}'
 
                 if mod_directory_path is not None and os.path.exists(mod_directory_path):
-                    print(f'Removing: {mod_directory_path}')
+                    self.__logger.debug(f'Removing: {mod_directory_path}')
                     os.rmdir(mod_directory_path)
 
                 if os.path.exists(mod_entry.file_path):
-                    print(f'Removing: {mod_entry.file_path}')
+                    self.__logger.debug(f'Removing: {mod_entry.file_path}')
                     os.remove(mod_entry.file_path)
 
                 self.mod_install_progress.pop(mod_name)
-                print(f'Successfully removed {mod_name}')
+                self.__logger.info(f'Successfully removed {mod_name}')
             except Exception:
-                traceback.print_exc()
+                self.__logger.error(
+                    f'An error occured while trying to remove mod {mod_name}: {traceback.format_exc()}')
 
     def print_status(self):
         print('\n')

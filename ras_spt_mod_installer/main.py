@@ -2,10 +2,11 @@ import traceback
 import git
 import os
 import sys
-from git.exc import InvalidGitRepositoryError
 import wget
 import subprocess
+import logging
 
+from git.exc import InvalidGitRepositoryError
 from shutil import which
 from downloader import RASDownloader
 
@@ -27,10 +28,12 @@ class RASLauncher:
         self.git_url = 'https://github.com/git-for-windows/git/releases/download/v2.48.1.windows.1/Git-2.48.1-64-bit.exe'
         self.git_repo: git.Repo
 
+        self.__logger = logging.getLogger(RASLauncher.__name__)
+
     def check_git_availability(self):
-        print('Checking system git availability..')
+        self.__logger.info('Checking system git availability..')
         if not which('git'):
-            print('Downloading and installing git..')
+            self.__logger.info('Downloading and installing git..')
             if not os.path.exists(self.git_folder):
                 os.mkdir(self.git_folder)
 
@@ -43,22 +46,22 @@ class RASLauncher:
                 process = subprocess.run(install_cmd, check=True)
                 self.git = git.Git()
                 version = [str(v) for v in self.git.version_info]
-                print(f'Installed git version: {".".join(version)}')
+                self.__logger.info(f'Installed git version: {".".join(version)}')
             except subprocess.CalledProcessError:
-                print(
+                self.__logger.error(
                     f'Git installation failed. The installer is located at: {git_installer_path}, please attempt it manually.')
                 traceback.print_exc()
                 sys.exit(1)
             except Exception:
-                print('Git installer download failed')
+                self.__logger.error('Git installer download failed')
                 traceback.print_exc()
                 sys.exit(1)
         else:
             self.git = git.Git()
-            print('Git is available!')
+            self.__logger.info('Git is available!')
 
     def check_if_repo_exists(self):
-        print('Setting up git repository..')
+        self.__logger.info('Setting up git repository..')
         try:
             self.git_repo = git.Repo()
         except InvalidGitRepositoryError:
@@ -93,11 +96,11 @@ class RASLauncher:
         if launcher_path:
             path = os.path.join(os.getcwd(), launcher_path)
             cmd = f'cmd /c start {path}'.split()
-            print(cmd)
             process = subprocess.Popen(cmd, start_new_session=True)
-            print('Launching SPT.. Have fun!')
+            self.__logger.info('Launching SPT.. Have fun!')
         else:
-            print('SPT Launcher not found! Please make sure you are running the RAS Launcher from the same directory!')
+            self.__logger.warning(
+                'SPT Launcher not found! Please make sure you are running the RAS Launcher from the same directory!')
 
     def run(self):
         self.downloader.run()
@@ -112,6 +115,15 @@ def exception_hook(type, value, traceback, oldhook=sys.excepthook):
 
 
 def main():
+    log_handler = logging.StreamHandler(sys.stdout)
+    formatter = logging.Formatter('%(name)s - %(levelname)s - %(message)s')
+    log_handler.setFormatter(formatter)
+    logging.getLogger().addHandler(log_handler)
+
+    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    log_handler = logging.FileHandler('./ras_logging')
+    logging.getLogger().addHandler(log_handler)
+
     sys.excepthook = exception_hook
     launcher = RASLauncher()
     launcher.run()
