@@ -98,9 +98,9 @@ class RASLauncher:
                 launcher_path = file
 
         if launcher_path:
-            path = os.path.join(os.getcwd(), launcher_path)
-            cmd = f'cmd /c start {path}'.split()
-            process = subprocess.Popen(cmd, start_new_session=True)
+            path = os.path.normpath(os.path.join(os.getcwd(), launcher_path))
+            cmd = ['cmd', '/c', 'start', f'"{path}"']
+            subprocess.Popen(cmd, start_new_session=True)
             self.__logger.info('Launching SPT.. Have fun!')
         else:
             self.__logger.warning(
@@ -139,6 +139,7 @@ def main():
     log_handler = logging.FileHandler('./ras_logging')
     logging.getLogger().addHandler(log_handler)
 
+    # TODO: Separate logging level for our loggers(this one enables httpx logging)
     logging.getLogger().setLevel(logging.INFO)
 
     sys.excepthook = exception_hook
